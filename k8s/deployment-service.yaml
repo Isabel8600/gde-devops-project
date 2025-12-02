@@ -1,6 +1,4 @@
-# ----------------------------------------------------------------------------------
 # 1. Kubernetes Deployment Object
-# ----------------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -8,7 +6,7 @@ metadata:
   labels:
     app: devops-app
 spec:
-  # KÖTELEZŐ LÉPÉS: Egynél több replika (Pod) futtatása
+  # Egynél több replika (Pod) futtatása
   replicas: 3
   selector:
     matchLabels:
@@ -20,17 +18,12 @@ spec:
     spec:
       containers:
       - name: devops-flask-container
-        # KÖTELEZŐ LÉPÉS: Használd a GitLab pipeline által létrehozott Docker image-et.
-        # FIGYELEM: CSERÉLD KI EZT A HELYŐRZŐT A SAJÁT KÉPED ELÉRÉSI ÚTVONALÁRA!
-        # Pl.: registry.gitlab.com/isabel8600/devops-beadando:latest
         image: registry.gitlab.com/isabel8600/devops-beadando:latest
-        # A konténer portja, amit az app.py-ban is használtunk
         ports:
         - containerPort: 8080
         
         # Környezeti változók beállítása
         env:
-        # KÖTELEZŐ LÉPÉS: ConfigMap objectben tárolt környezeti változó használata
         - name: K8S_VERSION_INFO
           valueFrom:
             configMapKeyRef:
@@ -41,14 +34,10 @@ spec:
             configMapKeyRef:
               name: devops-config
               key: APP_PORT
-        
-        # A Deployment stratégiája: Ha az image elérési útvonala nem változik, 
-        # a Kubernetes ne próbálja meg újra letölteni, ha már megvan
         imagePullPolicy: IfNotPresent
 ---
-# ----------------------------------------------------------------------------------
+
 # 2. Kubernetes Service Object (ClusterIP)
-# ----------------------------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -56,11 +45,10 @@ metadata:
   labels:
     app: devops-app
 spec:
-  # KÖTELEZŐ LÉPÉS: ClusterIP típusú Service
+  # ClusterIP típusú Service
   type: ClusterIP
   selector:
     app: devops-app
-  # Definiáljuk a portokat: a Service 8080-as portja a Podok 8080-as portjára mutat
   ports:
     - protocol: TCP
       port: 8080

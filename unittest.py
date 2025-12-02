@@ -24,16 +24,16 @@ class AppTestCase(unittest.TestCase):
         # GET kérés küldése a /status végpontra
         response = self.client.get('/status')
 
-        # 1. Ellenőrizzük a HTTP státuszkódot
+        # Ellenőrizzük a HTTP státuszkódot
         self.assertEqual(response.status_code, EXPECTED_STATUS_CODE)
 
-        # 2. Ellenőrizzük, hogy a válasz JSON formátumú
+        # Ellenőrizzük, hogy a válasz JSON formátumú
         self.assertEqual(response.content_type, 'application/json')
         
         # JSON tartalom dekódolása
         data = json.loads(response.get_data(as_text=True))
         
-        # 3. Ellenőrizzük, hogy a válasz tartalmazza-e a feladatban kért stringet
+        # Ellenőrizzük, hogy a válasz tartalmazza-e a feladatban kért stringet
         self.assertIn('message', data)
         self.assertEqual(data['message'], STATUS_MESSAGE)
 

@@ -1,82 +1,57 @@
-# ----------------------------------------------------------------------------------
+
 # GLOBÁLIS BEÁLLÍTÁSOK
-# ----------------------------------------------------------------------------------
-# Meghatározzuk, milyen 'stage'-ek (szakaszok) legyenek a pipeline-ban.
-# A job-ok ezen stage-ek szerint futnak, a sorrendjük pedig: test -> build_image
 stages:
   - test
   - build_image
 
-# ----------------------------------------------------------------------------------
 # VÁLTOZÓK (VARIABLES)
-# ----------------------------------------------------------------------------------
 variables:
-  # Az image tag-je. A CI_REGISTRY_IMAGE a projekt registry címe (pl. gitlab.com/user/project).
-  # A CI_COMMIT_SHORT_SHA a commit rövid hash-e, ami egyedi tag-et ad.
   IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
   
   # A teszteléshez szükséges Python image
   PYTHON_IMAGE: "python:3.11-slim"
 
-# ----------------------------------------------------------------------------------
-# 1. STAGE: TEST (Unit-test sikeres futtatása & Artifact kiadása)
-# ----------------------------------------------------------------------------------
+# STAGE: TEST (Unit-test sikeres futtatása & Artifact kiadása)
 unit_test_job:
   stage: test
-  # A teszteléshez a Python image-et használjuk (Docker in Docker nem szükséges)
   image: $PYTHON_IMAGE
   script:
     - echo "--- 1. Függőségek telepítése (requirements.txt) ---"
-    # Telepítjük a teszthez szükséges függőségeket (Flask, gunicorn)
     - pip install -r requirements.txt
     
-    # KÖTELEZŐ LÉPÉS: Unit-test sikeres futtatása
     - echo "--- 2. Unit teszt futtatása (test_app.py) ---"
-    # A Python unittest modul futtatja a tesztet. Csak sikeres teszt esetén megy tovább.
     - python3 test_app.py
     
-    # KÖTELEZŐ LÉPÉS: Egy szabadon választható artifact kiadása
+    # Egy szabadon választható artifact kiadása
     - echo "--- 3. Artifact létrehozása ---"
     - echo "Unit test sikeresen lefutott a $(date) időpontban." > test_report.txt
     - echo "Artifact létrehozva: test_report.txt"
-  
-  # Definiáljuk az artifactot, ami a job után elérhetővé válik
   artifacts:
     paths:
       - test_report.txt
-    # Az artifactot 30 napig tárolja
     expire_in: 30 days
 
 
-# ----------------------------------------------------------------------------------
-# 2. STAGE: BUILD_IMAGE (Docker image előállítása és feltöltése)
-# ----------------------------------------------------------------------------------
-# A build job-nak szüksége van a Docker-támogatásra, ezért a 'docker:24.0.5-dind' (Docker in Docker) service-t használjuk.
+# 2. BUILD_IMAGE (Docker image előállítása és feltöltése)
 build_and_push_image:
   stage: build_image
   
-  # A Docker CLI-t tartalmazó image-et használjuk
   image: docker:24.0.5
   
-  # A Docker in Docker (dind) service lehetővé teszi a Docker parancsok futtatását a runnerben
   services:
     - docker:24.0.5-dind
     
-  # A build job csak akkor fut, ha a 'test' stage sikeres volt (alapértelmezett)
   script:
     - echo "--- 1. Belépés a GitLab Image Registrybe ---"
-    # Bejelentkezés a GitLab saját beépített CI/CD változóival (biztonságos token használata)
-    # $CI_REGISTRY, $CI_REGISTRY_USER, $CI_REGISTRY_PASSWORD automatikus változók
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     
-    # KÖTELEZŐ LÉPÉS: Docker fájl alapján a docker image előállítása
+    # Docker fájl alapján a docker image előállítása
     - echo "--- 2. Docker image előállítása (docker build) ---"
     - docker build -t $IMAGE_TAG .
     
-    # KÖTELEZŐ LÉPÉS: Az előállított docker image feltöltése a publikus GitLab image registrybe
+    # Az előállított docker image feltöltése a publikus GitLab image registrybe
     - echo "--- 3. Image feltöltése a GitLab Registrybe (docker push) ---"
     - docker push $IMAGE_TAG
   
-  # Csak a 'main' branch-en futtatjuk (a Git flow-hoz ez a leggyakoribb)
   only:
     - main
